@@ -25,11 +25,11 @@ import config.ArgParser;
 public class Worker implements Runnable {
 		private File FILEPATH;
 		ASParser ASparser = null;
-		BlastpParser bp = null;
+		BlastpParser blastp_parser = null;
 		
 		public Worker(File FILEPATH) {
 			ASparser = new ASParser();
-			bp = new BlastpParser();
+			blastp_parser = new BlastpParser();
 			this.FILEPATH = FILEPATH;
 		}
 		
@@ -37,10 +37,10 @@ public class Worker implements Runnable {
 			String peptideFilePath = ArgParser.getPeptidePath() + "/" + isoform1.getIsoformName();
 			CompareRegionType cmpRegion = new CompareRegionType(ArgParser.getPeptideCompareLength());
 			if (new File(peptideFilePath).exists()) {
-				bp.parse(peptideFilePath);
+				blastp_parser.parse(peptideFilePath);
 				int isoformStr = isoform1.getStrPoint();
 				int isoformEnd = isoform1.getEndPoint();
-				for (Peptide p : bp.getPeptides()) {
+				for (Peptide p : blastp_parser.getPeptides()) {
 					int peptideStr = p.getAlign_start();
 					int peptideEnd = p.getAlign_end();
 					cmpRegion.chkOverlap(isoformStr, isoformEnd,	peptideStr, peptideEnd);					
@@ -65,6 +65,13 @@ public class Worker implements Runnable {
 					System.out.println(files);
 					ASparser.parse(ArgParser.getIsoformPath() + "/" + files);
 					IsoformPair[] isoform = ASparser.getIsoform();
+					
+					// Collect statistical information					
+					if (isoform.length > 0)
+						Reporter.addValue(Reporter.Variable.NUM_OF_REF, 1);					
+					
+					
+					
 					for (int j = 0; j < isoform.length; j++) {
 						IsoformPair s = isoform[j];
 						
@@ -72,14 +79,12 @@ public class Worker implements Runnable {
 							overlapInformation.put(s.Reference().getIsoformName(), new StringBuilder());
 						if (!overlapInformation.containsKey(s.Variant().getIsoformName()))
 							overlapInformation.put(s.Variant().getIsoformName(), new StringBuilder());
-
-						// Collect statistical information
-						Reporter.addValue(Reporter.Variable.NUM_OF_REF, 1);
+						
 						addOverlap(overlapInformation.get(s.Reference().getIsoformName()), overlapInformation.get(s.Variant().getIsoformName()), s.Reference(), s.Variant());
+						addOverlap(overlapInformation.get(s.Variant().getIsoformName()), null, s.Variant(), null);
 						
 						// Collect statistical information						
 						Reporter.addValue(Reporter.Variable.NUM_OF_VAR, 1);
-						addOverlap(overlapInformation.get(s.Variant().getIsoformName()), null, s.Variant(), null);						
 					}
 					
 					/*
