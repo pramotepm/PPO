@@ -111,12 +111,14 @@ public final class ArgParser {
 					break;
 					case "seq":
 					case "s":
-						sequencePath = parseDirectory(o.getValue());
+						sequencePath = new File(o.getValue());
 					break;
 					case "out":
 					case "o":
 						outputPath = parseDirectory(o.getValue());
+						new File(outputPath.toString().concat("/ppo")).mkdir();
 						ppoPath = parseDirectory(outputPath.toString().concat("/ppo"));
+						new File(outputPath.toString().concat("/stat")).mkdir();
 						statPath = parseDirectory(outputPath.toString().concat("/stat"));
 					break;
 					case "region":
