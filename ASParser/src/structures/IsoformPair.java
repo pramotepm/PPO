@@ -13,20 +13,29 @@ public class IsoformPair {
 		private int strPoint;
 		private int endPoint;
 		private String isoformName;
+		private int refIsoformLength;
+		private int varIsoformLength;
+		private boolean isConfirmedByExperiment;
+		private String confirmedByExperimentSymbol;
+		private boolean isOverlap;
 		
 		public void extractRecord(String record) {
 			String[] spt = record.replaceAll("\\s+", " ").split(" ");
 			String[] temp = spt[8].split("_");
 			setSplicingType(temp[0]);
 			setIsoformType(temp[1]);
+			setIsComfirmedByExperiment(spt[1].equals("--"));
+			setConfirmedByExperimentSymbol(spt[1]);
+			setReferenceIsoformLength(Integer.parseInt(spt[3]));
+			setVariantIsoformLength(Integer.parseInt(spt[7]));
 			setASregionLength(Integer.parseInt(spt[12]));
 			setStrPoint(Integer.parseInt(spt[10]));
 			setEndPoint(Integer.parseInt(spt[11]));
-//			System.out.println(spt[10] + "  " + spt[11]);
 			if (getIsoformType() == Type.IsoformType.REF)
 				setIsoformName(spt[0]);
 			else
 				setIsoformName(spt[4]);
+			setIsOverlap(false);
 		}
 
 		public SplicingType getSplicingType() {
@@ -82,6 +91,26 @@ public class IsoformPair {
 			return endPoint;
 		}
 
+		public int getReferenceIsoformLength() {
+			return refIsoformLength; 
+		}
+		
+		public int getVariantIsoformLength() {
+			return varIsoformLength;
+		}
+		
+		public String getConfirmedByExperimentSymbol() {
+			return confirmedByExperimentSymbol;
+		}
+		
+		public boolean isConfirmedByExperiment() {
+			return isConfirmedByExperiment;
+		}
+		
+		public boolean isOverlap() {
+			return isOverlap;
+		}
+		
 		private void setEndPoint(int endPoint) {
 			this.endPoint = endPoint;
 		}
@@ -92,6 +121,26 @@ public class IsoformPair {
 
 		private void setIsoformName(String isoformName) {
 			this.isoformName = isoformName.replaceFirst("-", ".");
+		}
+		
+		private void setReferenceIsoformLength(int refIsoformLength) {
+			this.refIsoformLength = refIsoformLength;
+		}
+		
+		private void setVariantIsoformLength(int varIsoformLength) {
+			this.varIsoformLength = varIsoformLength;
+		}
+		
+		private void setIsComfirmedByExperiment(boolean isConfirmedByExperiment) {
+			this.isConfirmedByExperiment = isConfirmedByExperiment;
+		}
+		
+		private void setConfirmedByExperimentSymbol(String confirmedByExperimentSymbol) {
+			this.confirmedByExperimentSymbol = confirmedByExperimentSymbol;
+		}
+		
+		public void setIsOverlap(Boolean isOverlap) {
+			this.isOverlap = this.isOverlap || isOverlap;
 		}
 	}
 	private Isoform reference;
@@ -108,5 +157,9 @@ public class IsoformPair {
 	
 	public Isoform Variant() {
 		return this.variant;
+	}
+	
+	public Isoform[] getAllIsoform() {
+		return new Isoform[] { reference, variant };
 	}
 }

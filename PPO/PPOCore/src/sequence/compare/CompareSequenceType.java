@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 
+import sequence.compare.CompareRegionType.OverlapSide;
 import sequence.reader.SequenceDirectoryReader;
 import sequence.reader.SequenceFileReader;
 import structures.IsoformPair.Isoform;
@@ -46,7 +47,7 @@ public class CompareSequenceType {
 	}
 	
 	@SuppressWarnings("incomplete-switch")
-	public static boolean chkAfterSplice(Isoform ref, Isoform var, int pepStr, int pepEnd, String side, String x) {
+	public static boolean chkAfterSplice(Isoform ref, Isoform var, int pepStr, int pepEnd, OverlapSide side, String x) {
 		int overlapLength;
 		boolean b = false;
 		if (side != null) {
@@ -57,15 +58,17 @@ public class CompareSequenceType {
 //					System.out.println(x);
 //					System.out.flush();
 					switch (side) {
-						case "LEFT":
+						case LEFT:
 							// DELETE TYPE - LEFT OVERLAP
 							overlapLength = pepEnd - ref.getStrPoint() + 1;
 							b = isNFirstMatches(ref.getIsoformName(), var.getIsoformName(), ref.getStrPoint(), var.getEndPoint(), overlapLength);
 						break;
-						case "RIGHT":
+						case RIGHT:
 							// DELETE TYPE - RIGHT OVERLAP
 							overlapLength = ref.getEndPoint() - pepStr + 1;
 							b = isNFirstMatches(ref.getIsoformName(), var.getIsoformName(), pepStr, var.getEndPoint() - overlapLength + ((var.getStrPoint() == var.getEndPoint()) ? 1 : 0), overlapLength);
+						break;
+						default:
 						break;
 					}
 				break;

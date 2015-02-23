@@ -29,6 +29,7 @@ public class ASParser {
 			isoPair.Variant().extractRecord(line2);
 			isoform.add(isoPair);
 		}
+		
 		br.close();
 		isr.close();
 		fis.close();

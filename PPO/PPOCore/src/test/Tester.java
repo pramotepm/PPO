@@ -1,14 +1,11 @@
 package test;
 
-import java.util.HashSet;
+import org.apache.commons.io.FilenameUtils;
 
 public class Tester {
 	
 	public static void main(String[] args) {
-		HashSet<Pair<Integer, Integer>> x = new HashSet<>();
-		x.add(new Pair<Integer, Integer>(1, 2));
-		x.add(new Pair<Integer, Integer>(1, 2));
-		x.add(new Pair<Integer, Integer>(1, 2));
-		System.out.println(x.size());
+		String x = FilenameUtils.getName("eeeeee.1");
+		System.out.println(x);
 	}
 }

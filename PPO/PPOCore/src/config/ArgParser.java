@@ -8,26 +8,35 @@ import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.MissingOptionException;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FilenameUtils;
 
 public final class ArgParser {
+	private static final int defaultnumThread = 8;
+	private static final int defaultPeptideCompareLength = 5;
+
 	private static File isoformPath;
 	private static File peptidePath;
 	private static File sequencePath;
 	private static File outputPath;
 	private static File ppoPath;
 	private static File statPath;
-	private static int peptideCompareLength = 5;
-	private static int numThread = 8;
+	private static int peptideCompareLength = defaultPeptideCompareLength;
+	private static int numThread = defaultnumThread;
+	private static boolean isAlign = false;
+	private static boolean isCount = false;
+	private static int nOpenFiles = -1;
 	
+	// Prevent create new object
 	private ArgParser() {
-		// prevent create new object
 	}
 	
+	// Prevent cloning object
 	@Override
 	protected Object clone() throws CloneNotSupportedException {
 		throw new CloneNotSupportedException();
@@ -47,24 +56,31 @@ public final class ArgParser {
 	
 	@SuppressWarnings("static-access")
 	public static void parseArg(String[] args) throws ParseException, NotDirectoryException, FileNotFoundException {
+		Options helpOp = new Options();
+		
+		helpOp.addOption(OptionBuilder.withLongOpt("help")
+				.withDescription("print this message")
+				.hasArg(false)
+				.create("h"));
+		
 		Options options = new Options();
 		
 		options.addOption(OptionBuilder.withLongOpt("altseq")
-				.withDescription("directory of the alternative splicing")
+				.withDescription("directory contains the splicing information")
 				.hasArg()
 				.isRequired()
 				.withArgName("dir")
 				.create("a"));
 		
 		options.addOption(OptionBuilder.withLongOpt("peptide")
-				.withDescription("directory of peptide sequence, which was performed by BlastP program")
+				.withDescription("directory contains peptide identified files, which were performed by BlastP program")
 				.hasArg()
 				.isRequired()
 				.withArgName("dir")
 				.create("p"));
 
 		options.addOption(OptionBuilder.withLongOpt("seq")
-				.withDescription("file of amino sequence (both reference and variant corresponding with -a,--altseq) in fasta format")
+				.withDescription("file contains all amino sequences (both \"reference\" and \"variant\" isoform corresponding with -a,--altseq) in FASTA format")
 				.hasArg()
 				.isRequired()
 				.withArgName("file")
@@ -78,63 +94,97 @@ public final class ArgParser {
 				.create("o"));
 	
 		options.addOption(OptionBuilder.withLongOpt("np")
-				.withDescription("number of thread (default is 8)")
+				.withDescription(String.format("number of thread (default is %d)", defaultnumThread))
 				.hasArg()
 				.withArgName("value")
 				.create("n"));
 
 		options.addOption(OptionBuilder.withLongOpt("region")
-				.withDescription("number of overlapping region between peptide and AS region (default is 5)")
+				.withDescription(String.format("number of overlapping region between peptide and AS region (default is %d)", defaultPeptideCompareLength))
 				.hasArg()
 				.withArgName("size")
 				.create("r"));
+		
+		options.addOption(OptionBuilder.withLongOpt("debug")
+				.withDescription(String.format("number of overlapping region between peptide and AS region (default is %d)", defaultPeptideCompareLength))
+				.hasArg()
+				.withArgName("n")
+				.create());
 
-		options.addOption(OptionBuilder.withLongOpt("help")
-				.withDescription("print this message")
+		OptionGroup optionGroup = new OptionGroup();
+		
+		optionGroup.setRequired(true);
+		optionGroup.addOption(OptionBuilder.withLongOpt("align-with-peptide")
+				.withDescription("Program will start at the state of alignment of Alternatice Splicing and Peptides sequences")
 				.hasArg(false)
-				.create("h"));
-
+				.create());
+		optionGroup.addOption(OptionBuilder.withLongOpt("count-data")
+				.withDescription("Program will start at the state of counting the statistical data of the outputs")
+				.hasArg(false)
+				.create());
+		
+		options.addOptionGroup(optionGroup);
+		
 		CommandLineParser parser = new BasicParser();
 		HelpFormatter formatter = new HelpFormatter();
+		
+		CommandLine helpCmd = parser.parse(helpOp, args, true); 
+		if (helpCmd.hasOption("help") || helpCmd.hasOption("h")) {
+			formatter.printHelp("PPO.jar", options, true);
+			throw new ParseException("");
+		}
 		
 		try {
 			CommandLine cmd = parser.parse(options, args);
 			for (Option o : cmd.getOptions()) {
-				switch(o.getOpt()) {
-					case "altseq":
-					case "a":
-						isoformPath = parseDirectory(o.getValue());
-					break;
-					case "peptide":
-					case "p":
-						peptidePath = parseDirectory(o.getValue());
-					break;
-					case "seq":
-					case "s":
-						sequencePath = new File(o.getValue());
-					break;
-					case "out":
-					case "o":
-						outputPath = parseDirectory(o.getValue());
-						new File(outputPath.toString().concat("/ppo")).mkdir();
-						ppoPath = parseDirectory(outputPath.toString().concat("/ppo"));
-						new File(outputPath.toString().concat("/stat")).mkdir();
-						statPath = parseDirectory(outputPath.toString().concat("/stat"));
-					break;
-					case "region":
-					case "r":
-						peptideCompareLength = Integer.parseInt(o.getValue(Integer.toString(peptideCompareLength)));
-					break;
-					case "np":
-					case "n":
-						numThread = Integer.parseInt(o.getValue(Integer.toString(numThread)));
-					break;
+				for (String opt : new String[] { o.getOpt(), o.getLongOpt() }) {
+					if (opt != null)
+						switch (opt) {
+							case "altseq":
+							case "a":
+								isoformPath = parseDirectory(o.getValue());
+							break;
+							case "peptide":
+							case "p":
+								peptidePath = parseDirectory(o.getValue());
+							break;
+							case "seq":
+							case "s":
+								sequencePath = new File(o.getValue());
+							break;
+							case "out":
+							case "o":
+								outputPath = parseDirectory(o.getValue());
+								new File(outputPath.toString().concat("/ppo")).mkdir();
+								ppoPath = parseDirectory(outputPath.toString().concat("/ppo"));
+								new File(outputPath.toString().concat("/stat")).mkdir();
+								statPath = parseDirectory(outputPath.toString().concat("/stat"));
+							break;
+							case "region":
+							case "r":
+								peptideCompareLength = Integer.parseInt(o.getValue());
+							break;
+							case "np":
+							case "n":
+								numThread = Integer.parseInt(o.getValue());
+							break;
+							case "align-with-peptide":
+								isAlign = true;
+							case "count-data":
+								isCount = true;
+							break;
+							case "debug":
+								nOpenFiles = Integer.parseInt(o.getValue());
+							break;
+						}
 				}
 			}
+		} catch (MissingOptionException e) {
+			System.err.println("Missing required options\n\nTry `PPO.jar --help' or `PPO.jar -h' for more options.");
+			throw e;
 		} catch (ParseException e) {
-			System.err.println("PPO.jar: " + e.getMessage());
-			formatter.printHelp("PPO.jar", options, true);
-			throw (e);
+			System.err.println(e.getMessage());
+			throw e;
 		}
 	}
 
@@ -154,7 +204,7 @@ public final class ArgParser {
 		return outputPath;
 	}
 
-	public static final File getPpoPath() {
+	public static final File getPPOPath() {
 		return ppoPath;
 	}
 
@@ -168,5 +218,25 @@ public final class ArgParser {
 
 	public static final int getNumThread() {
 		return numThread;
+	}
+
+	public static final boolean getAlignState() {
+		return isAlign;
+	}
+	
+	public static final boolean getCountingState() {
+		return isCount;
+	}
+	
+	public static final int getDebugMode() {
+		return nOpenFiles;
+	}
+	
+	public static void main(String[] args) {
+		try {
+			ArgParser.parseArg("--count-data -a pas/ -o out/ -p as_seq_out/ -s seq.fasta".split(" "));
+		} catch (NotDirectoryException | FileNotFoundException | ParseException e) {
+			//
+		}
 	}
 }
